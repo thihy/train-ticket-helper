@@ -1865,7 +1865,8 @@ function initAutoCommitOrder() {
 					'trainClass': 'QB#D#Z#T#K#QT#',
 					'includeStudent': '00',
 					'seatTypeAndNum': '',
-					'orderRequest.start_time_str': '00:00--24:00'
+					'orderRequest.start_time_str': '00:00--24:00',
+					'time':(new Date().getTime())
 				};
 				utility.get("/otsweb/order/querySingleAction.do?method=queryLeftTicket", queryLeftData, "text", function (text) {
 					if (/(([\da-zA-Z]\*{5,5}\d{4,4})+)/gi.test(text)) {
@@ -2033,8 +2034,8 @@ function initAutoCommitOrder() {
 		var saveModeInfo = safeModeTip.find("span:eq(0)");
 		var saveModeTimeInfo = safeModeTip.find("span:eq(1)");
 		var funSw = document.getElementById("autoDelayInvoke");
-		var defaultWaitTime = 5;
-		var waitTime = Math.max(5, (utility.getPref("safeModeWaitTime")) || defaultWaitTime);
+		var defaultWaitTime = 3;
+		var waitTime = Math.max(3, (utility.getPref("safeModeWaitTime")) || defaultWaitTime);
 
 		$("span.defaultSafeModeTime").html(defaultWaitTime);
 		$("#safeModeTime").val(waitTime).change(function () {
