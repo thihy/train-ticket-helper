@@ -1,7 +1,7 @@
-var version_12306_helper = "4.9.5";
+var version_12306_helper = "4.9.6";
 var version_updater = [
-	"* 修正常用联系人等页面出现显示不出界面的BUG",
-	"* 为出发时间和到达时间添加选项开关"
+	"* 修改默认等待时间为3s",
+	"* 查询票务信息时，禁止Cache"
 ];
 var fishlee12306_msgid=17;
 var fishlee12306_msgver="4.6.2";

@@ -11,7 +11,7 @@
 // @match			https://www.12306.cn/otsweb/*
 // @icon			http://www.12306.cn/mormhweb/images/favicon.ico
 // @run-at			document-idle
-// @version 		4.9.5
+// @version 		4.9.6
 // @updateURL		http://static.fishlee.net/_softdownload/12306_ticket_helper.user.js
 // @supportURL		http://www.fishlee.net/soft/44/
 // @homepage		http://www.fishlee.net/soft/44/
@@ -21,16 +21,16 @@
 
 //=======START=======
 
-var version = "4.9.5";
+var version = "4.9.6";
 var updates = [
-	"* 修正常用联系人等页面出现显示不出界面的BUG",
-	"* 为出发时间和到达时间添加选项开关"
+	"* 修改默认等待时间为3s",
+	"* 查询票务信息时，禁止Cache"
 ];
 
 var faqUrl = "http://www.fishlee.net/soft/44/faq.html";
 //标记
 var utility_emabed = false;
-var compVersion = "5.72";
+var compVersion = "5.73";
 
 
 //#region -----------------UI界面--------------------------
@@ -1328,7 +1328,39 @@ function entryPoint() {
 	}
 }
 
+
+function injectJqueryAjax(){
+    var _ajax = jQuery.ajax;
+	var paramHistoryCount = 20;
+	var paramPos = 0;
+	var paramHistory = [];
+	function correctAjaxOptions(options){
+		var data = options.data;
+		// 动态添加参数，猜测服务端使用的“主动注入”参数方式，所以不能随便填写参数名称，否则会引发服务端异常
+		// 可以往末尾添加&来完成此功能
+		var param;
+		if(jQuery.isPlainObject(data)){
+		  param =jQuery.param(data);
+		}else{
+		  param = data || "";
+		}
+		while(paramHistory.indexOf(param)>=0){
+			param = param+"&";
+		}
+		paramHistory[paramPos]=param;
+		paramPos = (paramPos+1) % paramHistoryCount;
+		options.global=true;
+		options.data = param;
+		return options;
+	}
+	jQuery.ajax = function(options){
+		options = correctAjaxOptions(options);
+		_ajax(options);
+	}
+}
+
 function injectQueryScripts() {
+	unsafeInvoke(injectJqueryAjax);
 	unsafeInvoke(initTicketQuery);
 	unsafeInvoke(initAutoPreSubmitOrder);
 	unsafeInvoke(initAdvancedTicketQuery);
@@ -2131,14 +2163,15 @@ function initTicketQuery() {
 	var timer = null;
 	var isTicketAvailable = false;
 	var audio = null; //通知声音
-	var timeCount = 0;
+	var minWaitSeconds = 3;
+	var timeCount = minWaitSeconds;
 	var autoBook = false;
 	//初始化表单
 	var form = $("form[name=querySingleForm] .cx_from:first");
 	form.find("tr:last").after("<tr class='append_row'><td colspan='9' id='queryFunctionRow'>\
 <ul id='queryOpt' style='margin-top:20px;border-radius:5px 5px 0px 0px;border-bottom:none;' class='fish_opt'>\
 	<li><label title='勾选此选项的话，每次你查询后，助手会帮你把始发站、到达站、日期等进行记录，下次进入查询页面后，将会帮您自动填写好'><input type='checkbox' id='keepinfo' checked='checked' />记住信息</label></li>\
-	<li><label title='勾选此选项后，假定查询的结果中没有符合你要求的车次，那么助手将会自动进行重新查询'><input checked='checked' type='checkbox' id='autoRequery' style='padding:0;' />自动重查，每隔</label><input style='width:40px;text-align:center;' type='number' min='5' value='5' size='4' id='refereshInterval' style='text-align:center;' />秒</li>\
+	<li><label title='勾选此选项后，假定查询的结果中没有符合你要求的车次，那么助手将会自动进行重新查询'><input checked='checked' type='checkbox' id='autoRequery' style='padding:0;' />自动重查，每隔</label><input style='width:40px;text-align:center;' type='number' min='"+minWaitSeconds+"' value='"+timeCount+"' size='4' id='refereshInterval' style='text-align:center;' />秒</li>\
 	<li><label title='勾选的话，当有票可定时，助手会放歌骚扰你'><input type='checkbox' checked='checked' id='chkAudioOn'>声音提示</label></li>\
 	<li><label title='设置有票时放的歌是不是放到天荒地老至死不渝'><input type='checkbox' checked='checked' id='chkAudioLoop'>声音循环</label></li>\
 </ul><ul id='retryOpt' style='border-top:none;border-bottom:none;' class='fish_opt'>\
@@ -2327,7 +2360,8 @@ function initTicketQuery() {
 			resetTimer();
 	});
 	//刷新时间间隔
-	$("#refereshInterval").change(function () { timeCount = Math.max(5, parseInt($("#refereshInterval").val())); }).change();
+	var minWaitSeconds = 3;
+	$("#refereshInterval").change(function () { timeCount = Math.max(minWaitSeconds, parseInt($("#refereshInterval").val())); }).change();
 
 	//定时查询
 	var isSmartOn = false;
@@ -2349,7 +2383,7 @@ function initTicketQuery() {
 		$("#refreshtimer").html("[" + (isSmartOn ? "等待正点," : "") + str + (str.indexOf('.') == -1 ? ".0" : "") + "秒后查询...]");
 
 		if (timerCountDown > 0) return;
-
+		if(jQuery.active > 0) return;
 		clearInterval(timer);
 		timer = null;
 		de.trigger("requery");
@@ -2400,7 +2434,8 @@ function initTicketQuery() {
 		timer = null;
 		if (audio) audio.pause();
 		displayQueryInfo();
-		sendQueryFunc.call(clickBuyStudentTicket == "Y" ? document.getElementById("stu_submitQuery") : document.getElementById("submitQuery"));
+		var submitQueryBtn = clickBuyStudentTicket == "Y" ? document.getElementById("stu_submitQuery") : document.getElementById("submitQuery");
+		sendQueryFunc.call(submitQueryBtn);
 	}
 
 	//验证车票有开始
